@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор викидів</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4 max-w-3xl">
+        <h1 class="text-2xl font-bold text-center mb-6">Калькулятор викидів твердих частинок</h1>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="mb-4">
+                <label for="coalAmount" class="block text-sm font-medium text-gray-700">Кількість вугілля (тонн):</label>
+                <input type="number" id="coalAmount" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Введіть кількість вугілля в тоннах" min="0">
+            </div>
+            <div class="mb-4">
+                <label for="fuelOilAmount" class="block text-sm font-medium text-gray-700">Кількість мазуту (тонн):</label>
+                <input type="number" id="fuelOilAmount" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Введіть кількість мазуту в тоннах" min="0">
+            </div>
+            <div class="mb-4">
+                <label for="naturalGasAmount" class="block text-sm font-medium text-gray-700">Кількість природного газу (тис. м³):</label>
+                <input type="number" id="naturalGasAmount" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Введіть кількість газу в тис. м³" min="0">
+            </div>
+            <button onclick="calculateEmissions()" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Розрахувати викиди</button>
+            <div id="result" class="mt-4 text-center"></div>
+        </div>
+    </div>
+
+    <script>
+        function calculateEmissions() {
+            const coalAmount = parseFloat(document.getElementById('coalAmount').value) || 0;
+            const fuelOilAmount = parseFloat(document.getElementById('fuelOilAmount').value) || 0;
+            const naturalGasAmount = parseFloat(document.getElementById('naturalGasAmount').value) || 0;
+            const resultDiv = document.getElementById('result');
+
+            if (coalAmount < 0 || fuelOilAmount < 0 || naturalGasAmount < 0) {
+                resultDiv.innerHTML = '<p class="text-red-500">Будь ласка, введіть коректні невід’ємні значення.</p>';
+                return;
+            }
+
+            let results = '';
+            let totalE_tb = 0;
+
+            // Coal calculations
+            if (coalAmount > 0) {
+                const Qr_coal = 20.47; // MJ/kg
+                const Ar_coal = 25.20; // % ash content
+                const a_vin_coal = 0.8; // Liquid slag removal (Table 2.1)
+                const eta_zy = 0.985; // Electrostatic filter efficiency
+                const Gamma_vin_coal = 1.5; // % combustible in fly ash
+                const k_tbS_coal = 0; // No sulfur cleaning installation
+
+                // Calculate k_tb for coal (eq. 2.2)
+                const k_tb_coal = (10**6 / Qr_coal) * a_vin_coal * (Ar_coal / (100 - Gamma_vin_coal)) * (1 - eta_zy) + k_tbS_coal;
+                // Calculate E_tb for coal (eq. 2.1)
+                const E_tb_coal = 10**-6 * k_tb_coal * Qr_coal * coalAmount;
+                totalE_tb += E_tb_coal;
+
+                results += `
+                    <h3 class="text-lg font-semibold mt-4">Вугілля (Донецьке газове ГР)</h3>
+                    <p>Показник емісії (k_tb): ${k_tb_coal.toFixed(2)} г/ГДж</p>
+                    <p>Валовий викид (E_tb): ${E_tb_coal.toFixed(2)} тонн</p>
+                `;
+            }
+
+            // Fuel oil calculations
+            if (fuelOilAmount > 0) {
+                const Qr_fuelOil = 39.48; // MJ/kg (adjusted for 2% moisture: 40.40 * (1 - 0.02))
+                const Ar_fuelOil = 0.15; // % ash content
+                const a_vin_fuelOil = 1.0; // Table 2.1
+                const eta_zy = 0.985; // Electrostatic filter efficiency
+                const Gamma_vin_fuelOil = 0; // % combustible in fly ash
+                const k_tbS_fuelOil = 0; // No sulfur cleaning installation
+
+                // Calculate k_tb for fuel oil (eq. 2.2)
+                const k_tb_fuelOil = (10**6 / Qr_fuelOil) * a_vin_fuelOil * (Ar_fuelOil / (100 - Gamma_vin_fuelOil)) * (1 - eta_zy) + k_tbS_fuelOil;
+                // Calculate E_tb for fuel oil (eq. 2.1)
+                const E_tb_fuelOil = 10**-6 * k_tb_fuelOil * Qr_fuelOil * fuelOilAmount;
+                totalE_tb += E_tb_fuelOil;
+
+                results += `
+                    <h3 class="text-lg font-semibold mt-4">Мазут (Високосірчистий мазут 40)</h3>
+                    <p>Показник емісії (k_tb): ${k_tb_fuelOil.toFixed(2)} г/ГДж</p>
+                    <p>Валовий викид (E_tb): ${E_tb_fuelOil.toFixed(2)} тонн</p>
+                `;
+            }
+
+            // Natural gas calculations
+            if (naturalGasAmount > 0) {
+                // Natural gas: no particulate emissions (as per document)
+                const k_tb_naturalGas = 0;
+                const E_tb_naturalGas = 0;
+
+                results += `
+                    <h3 class="text-lg font-semibold mt-4">Природний газ (Уренгой-Ужгород)</h3>
+                    <p>Показник емісії (k_tb): ${k_tb_naturalGas.toFixed(2)} г/ГДж</p>
+                    <p>Валовий викид (E_tb): ${E_tb_naturalGas.toFixed(2)} тонн</p>
+                `;
+            }
+
+            if (results === '') {
+                results = '<p class="text-red-500">Будь ласка, введіть хоча б одну кількість палива.</p>';
+            } else {
+                results += `
+                    <h3 class="text-lg font-semibold mt-4">Загальний валовий викид</h3>
+                    <p>Загальний E_tb: ${totalE_tb.toFixed(2)} тонн</p>
+                `;
+            }
+
+            resultDiv.innerHTML = results;
+        }
+    </script>
+</body>
+</html>
